@@ -1,0 +1,58 @@
+{
+  "name": "lacus/changesets",
+  "type": "project",
+  "authors": [
+    {
+      "name": "Julio L. Muller",
+      "email": "juliolmuller@outlook.com",
+      "homepage": "https://juliolmuller.github.io"
+    }
+  ],
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "prepare": "captainhook",
+    "commit": "conventional-commits prepare",
+    "test": "phpunit",
+    "test-coverage": "phpunit --coverage-html coverage",
+    "phpstan": "phpstan analyse",
+    "cs-check": "phpcs",
+    "cs-fix": "phpcbf",
+    "quality": [
+      "@cs-check",
+      "@phpstan",
+      "@test"
+    ]
+  },
+  "config": {
+    "sort-packages": true,
+    "allow-plugins": {
+      "captainhook/hook-installer": true,
+      "composer/package-versions-deprecated": true,
+      "infection/extension-installer": true
+    }
+  },
+  "require": {
+    "php": "^8.1"
+  },
+  "require-dev": {
+    "captainhook/captainhook": "^5.25",
+    "captainhook/hook-installer": "^1.0",
+    "phpstan/phpstan": "^2.1",
+    "phpunit/phpunit": "^10.5",
+    "ramsey/conventional-commits": "^1.6",
+    "spatie/phpunit-watcher": "~1.24",
+    "squizlabs/php_codesniffer": "^3.7"
+  },
+  "autoload": {
+    "psr-4": {
+      "Lacus\\Changesets\\": "packages/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Lacus\\Changesets\\Tests\\": "tests/"
+    }
+  }
+}
