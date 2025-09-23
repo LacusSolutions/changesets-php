@@ -1,0 +1,29 @@
+{
+  "pre-commit": {
+    "enabled": false,
+    "actions": [
+      {
+        "action": "\\CaptainHook\\App\\Hook\\PHP\\Action\\Linting"
+      },
+      {
+        "action": "composer fix"
+      }
+    ]
+  },
+  "commit-msg": {
+    "enabled": true,
+    "actions": [
+      {
+        "action": "\\Ramsey\\CaptainHook\\ValidateConventionalCommit"
+      }
+    ]
+  },
+  "pre-push": {
+    "enabled": false,
+    "actions": [
+      {
+        "action": "composer test"
+      }
+    ]
+  }
+}
