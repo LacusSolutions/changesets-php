@@ -1,0 +1,135 @@
+name: Sync Packages to Individual Repositories
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.changes.outputs.matrix }}
+      has-changes: ${{ steps.changes.outputs.has-changes }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Detect changed packages
+        id: changes
+        run: |
+          # Get the list of changed files in the last commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+
+          # Automatically discover all packages in the packages/ directory
+          echo "🔍 Discovering packages in packages/ directory..."
+          PACKAGE_NAMES=()
+          for package_dir in packages/*/; do
+            if [ -d "$package_dir" ]; then
+              package_name=$(basename "$package_dir")
+              PACKAGE_NAMES+=("$package_name")
+              echo "Found package: $package_name"
+            fi
+          done
+
+          echo "📦 Total packages discovered: ${#PACKAGE_NAMES[@]}"
+
+          # Check which packages have changes and build package configurations
+          CHANGED_PACKAGES=()
+          for package_name in "${PACKAGE_NAMES[@]}"; do
+            repo_url="https://github.com/LacusSolutions/changesets-php_$package_name.git"
+            package_path="packages/$package_name"
+
+            # Check if this package has changes
+            if echo "$CHANGED_FILES" | grep -q "^$package_path/"; then
+              # Create package configuration
+              package_config="{\"name\":\"$package_name\",\"path\":\"$package_path\",\"repo\":\"$repo_url\",\"branch\":\"main\"}"
+              CHANGED_PACKAGES+=("$package_config")
+              echo "✅ Package $package_name has changes"
+            else
+              echo "⏭️ Package $package_name has no changes"
+            fi
+          done
+
+          # Output the changed packages as matrix
+          if [ ${#CHANGED_PACKAGES[@]} -eq 0 ]; then
+            echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+            echo "No packages have changes"
+          else
+            # Convert array to JSON matrix format
+            printf -v packages_json '%s,' "${CHANGED_PACKAGES[@]}"
+            packages_json="[${packages_json%,}]"
+            echo "matrix={\"include\":$packages_json}" >> $GITHUB_OUTPUT
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+            echo "Changed packages: ${CHANGED_PACKAGES[*]}"
+          fi
+
+  sync-package:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+      fail-fast: false # Continue syncing other packages even if one fails
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Sync ${{ matrix.name }} package
+        run: |
+          echo "🔄 Syncing ${{ matrix.name }} package..."
+          echo "📦 Package: ${{ matrix.name }}"
+          echo "📁 Path: ${{ matrix.path }}"
+          echo "🔗 Repository: ${{ matrix.repo }}"
+          echo "🌿 Branch: ${{ matrix.branch }}"
+
+          # Check if subtree exists, if not add it
+          if ! git subtree show --prefix="${{ matrix.path }}" >/dev/null 2>&1; then
+            echo "➕ Adding subtree for ${{ matrix.name }}..."
+            git subtree add --prefix="${{ matrix.path }}" "${{ matrix.repo }}" "${{ matrix.branch }}" --squash || {
+              echo "❌ Failed to add subtree for ${{ matrix.name }}"
+              exit 1
+            }
+          fi
+
+          # Push changes to the subtree
+          echo "⬆️ Pushing changes to ${{ matrix.name }}..."
+          if git subtree push --prefix="${{ matrix.path }}" "${{ matrix.repo }}" "${{ matrix.branch }}"; then
+            echo "✅ Successfully synced ${{ matrix.name }}"
+          else
+            echo "❌ Failed to sync ${{ matrix.name }}"
+            exit 1
+          fi
+
+  sync-summary:
+    needs: [detect-changes, sync-package]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: No changes detected
+        if: needs.detect-changes.outputs.has-changes == 'false'
+        run: |
+          echo "ℹ️ No package changes detected in this commit"
+          echo "## ℹ️ No Changes Detected" >> $GITHUB_STEP_SUMMARY
+          echo "No packages had changes in this commit, so no synchronization was needed." >> $GITHUB_STEP_SUMMARY
+
+      - name: Sync completed
+        if: needs.detect-changes.outputs.has-changes == 'true'
+        run: |
+          echo "## 📊 Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All changed packages have been processed." >> $GITHUB_STEP_SUMMARY
+          echo "Check individual job results for detailed status." >> $GITHUB_STEP_SUMMARY
