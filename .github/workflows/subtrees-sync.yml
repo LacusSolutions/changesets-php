@@ -6,6 +6,11 @@ on:
       - main
   workflow_dispatch: # Allow manual triggering
 
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  SUBTREES_SYNC_ID: ${{ secrets.SUBTREES_SYNC_ID }}
+  SUBTREES_SYNC_PRIVATE_KEY: ${{ secrets.SUBTREES_SYNC_PRIVATE_KEY }}
+
 jobs:
   discover-packages:
     runs-on: ubuntu-latest
@@ -16,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ env.GITHUB_TOKEN }}
 
       - name: Discover packages
         id: packages
@@ -61,6 +66,9 @@ jobs:
   sync-package:
     needs: discover-packages
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     strategy:
       matrix: ${{ fromJson(needs.discover-packages.outputs.matrix) }}
       fail-fast: false # Continue syncing other packages even if one fails
@@ -69,7 +77,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ env.GITHUB_TOKEN }}
 
       - name: Configure Git
         run: |
@@ -80,8 +88,8 @@ jobs:
         id: generate_token
         uses: tibdex/github-app-token@v2
         with:
-          app_id: ${{ secrets.SUBTREES_SYNC_ID }}
-          private_key: ${{ secrets.SUBTREES_SYNC_PRIVATE_KEY }}
+          app_id: ${{ env.SUBTREES_SYNC_ID }}
+          private_key: ${{ env.SUBTREES_SYNC_PRIVATE_KEY }}
 
       - name: Configure Git with App Token
         run: |
