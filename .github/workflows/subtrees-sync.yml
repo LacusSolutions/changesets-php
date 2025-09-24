@@ -88,6 +88,22 @@ jobs:
           # Configure git to use the app token for authentication
           git config --global url."https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
+          # Debug: Test the token and check app installation
+          echo "🔍 Testing GitHub App token..."
+          echo "Token (first 10 chars): ${GITHUB_TOKEN:0:10}..."
+
+          # Test API access
+          echo "📡 Testing API access..."
+          curl -s -H "Authorization: token ${{ steps.generate_token.outputs.token }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               https://api.github.com/user | jq '.login' || echo "❌ API access failed"
+
+          # Check app installation on target repository
+          echo "🔍 Checking app installation on target repository: ${{ matrix.repo }}"
+          curl -s -H "Authorization: token ${{ steps.generate_token.outputs.token }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               "https://api.github.com/repos/LacusSolutions/changesets-php_${{ matrix.name }}" | jq '.name, .permissions' || echo "❌ Repository access failed"
+
       - name: Sync ${{ matrix.name }} package
         run: |
           echo "🔄 Syncing ${{ matrix.name }} package..."
