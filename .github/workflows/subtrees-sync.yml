@@ -7,11 +7,10 @@ on:
   workflow_dispatch: # Allow manual triggering
 
 jobs:
-  detect-changes:
+  discover-packages:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.changes.outputs.matrix }}
-      has-changes: ${{ steps.changes.outputs.has-changes }}
+      matrix: ${{ steps.packages.outputs.matrix }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -19,12 +18,9 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Detect changed packages
-        id: changes
+      - name: Discover packages
+        id: packages
         run: |
-          # Get the list of changed files in the last commit
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
-
           # Automatically discover all packages in the packages/ directory
           echo "🔍 Discovering packages in packages/ directory..."
           PACKAGE_NAMES=()
@@ -38,43 +34,35 @@ jobs:
 
           echo "📦 Total packages discovered: ${#PACKAGE_NAMES[@]}"
 
-          # Check which packages have changes and build package configurations
-          CHANGED_PACKAGES=()
+          # Build package configurations for all packages
+          ALL_PACKAGES=()
           for package_name in "${PACKAGE_NAMES[@]}"; do
             repo_url="https://github.com/LacusSolutions/changesets-php_$package_name.git"
             package_path="packages/$package_name"
 
-            # Check if this package has changes
-            if echo "$CHANGED_FILES" | grep -q "^$package_path/"; then
-              # Create package configuration
-              package_config="{\"name\":\"$package_name\",\"path\":\"$package_path\",\"repo\":\"$repo_url\",\"branch\":\"main\"}"
-              CHANGED_PACKAGES+=("$package_config")
-              echo "✅ Package $package_name has changes"
-            else
-              echo "⏭️ Package $package_name has no changes"
-            fi
+            # Create package configuration
+            package_config="{\"name\":\"$package_name\",\"path\":\"$package_path\",\"repo\":\"$repo_url\",\"branch\":\"main\"}"
+            ALL_PACKAGES+=("$package_config")
+            echo "📦 Package $package_name will be synced"
           done
 
-          # Output the changed packages as matrix
-          if [ ${#CHANGED_PACKAGES[@]} -eq 0 ]; then
+          # Output all packages as matrix
+          if [ ${#ALL_PACKAGES[@]} -eq 0 ]; then
             echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
-            echo "has-changes=false" >> $GITHUB_OUTPUT
-            echo "No packages have changes"
+            echo "No packages found"
           else
             # Convert array to JSON matrix format
-            printf -v packages_json '%s,' "${CHANGED_PACKAGES[@]}"
+            printf -v packages_json '%s,' "${ALL_PACKAGES[@]}"
             packages_json="[${packages_json%,}]"
             echo "matrix={\"include\":$packages_json}" >> $GITHUB_OUTPUT
-            echo "has-changes=true" >> $GITHUB_OUTPUT
-            echo "Changed packages: ${CHANGED_PACKAGES[*]}"
+            echo "All packages: ${ALL_PACKAGES[*]}"
           fi
 
   sync-package:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.has-changes == 'true'
+    needs: discover-packages
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.discover-packages.outputs.matrix) }}
       fail-fast: false # Continue syncing other packages even if one fails
     steps:
       - name: Checkout repository
@@ -105,7 +93,7 @@ jobs:
             }
           fi
 
-          # Push changes to the subtree
+          # Push changes to the subtree (safe to run even if no changes)
           echo "⬆️ Pushing changes to ${{ matrix.name }}..."
           if git subtree push --prefix="${{ matrix.path }}" "${{ matrix.repo }}" "${{ matrix.branch }}"; then
             echo "✅ Successfully synced ${{ matrix.name }}"
@@ -115,21 +103,13 @@ jobs:
           fi
 
   sync-summary:
-    needs: [detect-changes, sync-package]
+    needs: [discover-packages, sync-package]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: No changes detected
-        if: needs.detect-changes.outputs.has-changes == 'false'
-        run: |
-          echo "ℹ️ No package changes detected in this commit"
-          echo "## ℹ️ No Changes Detected" >> $GITHUB_STEP_SUMMARY
-          echo "No packages had changes in this commit, so no synchronization was needed." >> $GITHUB_STEP_SUMMARY
-
       - name: Sync completed
-        if: needs.detect-changes.outputs.has-changes == 'true'
         run: |
           echo "## 📊 Sync Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All changed packages have been processed." >> $GITHUB_STEP_SUMMARY
+          echo "All packages have been processed." >> $GITHUB_STEP_SUMMARY
           echo "Check individual job results for detailed status." >> $GITHUB_STEP_SUMMARY
