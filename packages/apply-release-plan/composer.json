@@ -1,0 +1,39 @@
+{
+  "name": "lacus/changesets-apply-release-plan",
+  "version": "1.0.0",
+  "type": "library",
+  "description": "Apply release plans for PHP changesets",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Julio L. Muller",
+      "email": "juliolmuller@outlook.com",
+      "homepage": "https://juliolmuller.github.io"
+    }
+  ],
+  "keywords": [],
+  "scripts": {},
+  "config": {
+    "sort-packages": true
+  },
+  "require": {
+    "php": "^8.1",
+    "lacus/changesets-parse": "*",
+    "lacus/changesets-types": "*",
+    "lacus/changesets-write": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5",
+    "spatie/phpunit-watcher": "~1.24"
+  },
+  "autoload": {
+    "psr-4": {
+      "Lacus\\Changesets\\ApplyReleasePlan\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Lacus\\Changesets\\ApplyReleasePlan\\Tests\\": "tests/"
+    }
+  }
+}
