@@ -86,7 +86,7 @@ jobs:
 
       - name: Generate GitHub App Token
         id: generate_token
-        uses: tibdex/github-app-token@v2
+        uses: tibdex/github-app-token@v1
         with:
           app_id: ${{ env.SUBTREES_SYNC_ID }}
           private_key: ${{ env.SUBTREES_SYNC_PRIVATE_KEY }}
