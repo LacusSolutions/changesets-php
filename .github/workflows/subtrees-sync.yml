@@ -76,6 +76,18 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: tibdex/github-app-token@v1
+        with:
+          app-id: ${{ secrets.SUBTREES_SYNC_ID }}
+          private-key: ${{ secrets.SUBTREES_SYNC_PRIVATE_KEY }}
+
+      - name: Configure Git with App Token
+        run: |
+          # Configure git to use the app token for authentication
+          git config --global url."https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
       - name: Sync ${{ matrix.name }} package
         run: |
           echo "🔄 Syncing ${{ matrix.name }} package..."
