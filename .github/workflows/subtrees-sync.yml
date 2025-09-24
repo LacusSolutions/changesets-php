@@ -78,10 +78,10 @@ jobs:
 
       - name: Generate GitHub App Token
         id: generate_token
-        uses: tibdex/github-app-token@v1
+        uses: tibdex/github-app-token@v2
         with:
-          app-id: ${{ secrets.SUBTREES_SYNC_ID }}
-          private-key: ${{ secrets.SUBTREES_SYNC_PRIVATE_KEY }}
+          app_id: ${{ secrets.SUBTREES_SYNC_ID }}
+          private_key: ${{ secrets.SUBTREES_SYNC_PRIVATE_KEY }}
 
       - name: Configure Git with App Token
         run: |
