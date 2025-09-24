@@ -98,7 +98,7 @@ jobs:
 
           # Test API access
           echo "📡 Testing API access..."
-          echo "Token: ${{ steps.generate_token.outputs.token:0:10 }}..."
+          echo "Token: $(echo "${{ steps.generate_token.outputs.token }}" | cut -c1-10)..."
           curl -s -H "Authorization: token ${{ steps.generate_token.outputs.token }}" \
                -H "Accept: application/vnd.github.v3+json" \
                https://api.github.com/user | jq '.login' || echo "❌ API access failed"
