@@ -84,15 +84,6 @@ jobs:
           echo "🔗 Repository: ${{ matrix.repo }}"
           echo "🌿 Branch: ${{ matrix.branch }}"
 
-          # Check if subtree exists, if not add it
-          if ! git subtree show --prefix="${{ matrix.path }}" >/dev/null 2>&1; then
-            echo "➕ Adding subtree for ${{ matrix.name }}..."
-            git subtree add --prefix="${{ matrix.path }}" "${{ matrix.repo }}" "${{ matrix.branch }}" --squash || {
-              echo "❌ Failed to add subtree for ${{ matrix.name }}"
-              exit 1
-            }
-          fi
-
           # Push changes to the subtree (safe to run even if no changes)
           echo "⬆️ Pushing changes to ${{ matrix.name }}..."
           if git subtree push --prefix="${{ matrix.path }}" "${{ matrix.repo }}" "${{ matrix.branch }}"; then
