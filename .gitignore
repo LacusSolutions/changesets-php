@@ -13,8 +13,4 @@ vendor/
 .env*
 !.env.example
 
-infection.log
-infection.html
-infection.json
-
-/packages/**/composer.lock
+composer.lock
