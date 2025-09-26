@@ -1,0 +1,17 @@
+{
+  "phpunit": {
+    "bootstrap": "vendor/autoload.php",
+    "cacheDirectory": "vendor/.phpunit.cache",
+    "beStrictAboutOutputDuringTests": true,
+    "failOnRisky": true,
+    "colors": true,
+    "source": {
+      "include": {
+        "directory": "src/"
+      }
+    },
+    "logging": {
+      "junit": "vendor/.phpunit.cache/test-results.xml"
+    }
+  }
+}
